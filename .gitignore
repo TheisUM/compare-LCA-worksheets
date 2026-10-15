@@ -2,3 +2,9 @@
 __pycache__/
 *- comparison.xlsx
 ~$*.xlsx
+
+# Confidential input data - keep the folders, never the files
+old_LCA_sheet/*
+new_LCA_sheet/*
+!old_LCA_sheet/.gitkeep
+!new_LCA_sheet/.gitkeep
