@@ -87,13 +87,8 @@ Any new line still unmatched is reported as **new**. Any old line still unmatche
 reported as **removed**.
 
 Values are compared so that blank cells and empty text count as equal, leading and
-trailing spaces and blank lines are ignored, and a number stored as text (`'216001'`)
-equals the same number (`216001`). Formula cells are compared by their last calculated
-value.
-
-For the description column (column C), only the lines that differ are reported: the
-old value shows the lines that were removed and the new value shows the lines that
-were added. Unchanged lines of the build-up are left out.
+trailing spaces are ignored, and a number stored as text (`'216001'`) equals the same
+number (`216001`). Formula cells are compared by their last calculated value.
 
 ## Notes
 
