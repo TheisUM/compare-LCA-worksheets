@@ -24,6 +24,7 @@ Usage:
 """
 
 import argparse
+import difflib
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -34,7 +35,7 @@ from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-CODE_COL, NAME_COL = 0, 1  # 0-based positions in a row
+CODE_COL, NAME_COL, DESC_COL = 0, 1, 2  # 0-based positions in a row
 
 PROJECT_DIR = Path(__file__).resolve().parent
 OLD_DIR = PROJECT_DIR / "old_LCA_sheet"
@@ -116,7 +117,7 @@ def read_sheet(path, sheet_name, header_row, start_row):
 # ------------------------------------------------------------- comparing ---
 
 def normalize(v):
-    """Make values comparable: blank strings == None, trimmed text, numbers as float."""
+    """Make values comparable: blank strings == None, trimmed text without blank lines, numbers as float."""
     if v is None:
         return None
     if isinstance(v, bool):
@@ -124,7 +125,7 @@ def normalize(v):
     if isinstance(v, (int, float)):
         return float(v)
     if isinstance(v, str):
-        s = "\n".join(line.strip() for line in v.strip().splitlines())
+        s = "\n".join(line.strip() for line in v.splitlines() if line.strip())
         return s or None
     return v  # dates etc.
 
@@ -197,6 +198,29 @@ def fmt(v):
     return "(empty)" if normalize(v) is None else str(v)
 
 
+def is_line_diff(col, old_v, new_v):
+    """Description texts on both sides are compared line by line."""
+    return col == DESC_COL and isinstance(normalize(old_v), str) and isinstance(normalize(new_v), str)
+
+
+def diff_values(col, old_v, new_v):
+    """Old and new value as shown in the report.
+
+    For the description column only the lines that differ are shown: lines
+    that were removed from the old text and lines that were added in the new.
+    """
+    if not is_line_diff(col, old_v, new_v):
+        return fmt(old_v), fmt(new_v)
+    old_lines, new_lines = normalize(old_v).splitlines(), normalize(new_v).splitlines()
+    removed, added = [], []
+    matcher = difflib.SequenceMatcher(a=old_lines, b=new_lines, autojunk=False)
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag != "equal":
+            removed += old_lines[i1:i2]
+            added += new_lines[j1:j2]
+    return "\n".join(removed) or "(no lines removed)", "\n".join(added) or "(no lines added)"
+
+
 def write_report(new_path, new_sheet, headers, changes, new_only, removed, out_path, info):
     wb = openpyxl.load_workbook(new_path)  # keep formulas and formatting of the new file
     ws = wb[new_sheet]
@@ -216,8 +240,14 @@ def write_report(new_path, new_sheet, headers, changes, new_only, removed, out_p
         for c in diff:
             cell = ws.cell(new.excel_row, c + 1)
             cell.fill = FILL_CHANGED
-            comment = Comment(f"Old value (row {old.excel_row}):\n{fmt(old.values[c] if c < len(old.values) else None)}",
-                              "LCA compare")
+            old_v = old.values[c] if c < len(old.values) else None
+            new_v = new.values[c] if c < len(new.values) else None
+            old_text, new_text = diff_values(c, old_v, new_v)
+            if is_line_diff(c, old_v, new_v):
+                text = f"Removed lines (old row {old.excel_row}):\n{old_text}\n\nAdded lines:\n{new_text}"
+            else:
+                text = f"Old value (row {old.excel_row}):\n{old_text}"
+            comment = Comment(text, "LCA compare")
             comment.width, comment.height = 300, 150
             cell.comment = comment
         names = ", ".join(headers[c] for c in diff)
@@ -270,8 +300,8 @@ def write_report(new_path, new_sheet, headers, changes, new_only, removed, out_p
             old, new, diff = item
             for c in diff:
                 add("CHANGED", FILL_CHANGED, old, new, headers[c],
-                    fmt(old.values[c] if c < len(old.values) else None),
-                    fmt(new.values[c] if c < len(new.values) else None))
+                    *diff_values(c, old.values[c] if c < len(old.values) else None,
+                                 new.values[c] if c < len(new.values) else None))
     for old in removed:
         add("REMOVED", FILL_REMOVED, old, None, "(entire line)")
 
