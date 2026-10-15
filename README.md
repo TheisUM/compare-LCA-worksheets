@@ -87,8 +87,9 @@ Any new line still unmatched is reported as **new**. Any old line still unmatche
 reported as **removed**.
 
 Values are compared so that blank cells and empty text count as equal, leading and
-trailing spaces are ignored, and a number stored as text (`'216001'`) equals the same
-number (`216001`). Formula cells are compared by their last calculated value.
+trailing spaces and blank lines are ignored, and a number stored as text (`'216001'`)
+equals the same number (`216001`). Formula cells are compared by their last calculated
+value.
 
 ## Notes
 

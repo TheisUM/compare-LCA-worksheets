@@ -116,7 +116,7 @@ def read_sheet(path, sheet_name, header_row, start_row):
 # ------------------------------------------------------------- comparing ---
 
 def normalize(v):
-    """Make values comparable: blank strings == None, trimmed text, numbers as float."""
+    """Make values comparable: blank strings == None, trimmed text without blank lines, numbers as float."""
     if v is None:
         return None
     if isinstance(v, bool):
@@ -124,7 +124,7 @@ def normalize(v):
     if isinstance(v, (int, float)):
         return float(v)
     if isinstance(v, str):
-        s = "\n".join(line.strip() for line in v.strip().splitlines())
+        s = "\n".join(line.strip() for line in v.splitlines() if line.strip())
         return s or None
     return v  # dates etc.
 
